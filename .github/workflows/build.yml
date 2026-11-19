@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -24,14 +24,35 @@ jobs:
           set -e
           python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('src.b64','rb').read()))"
           echo "bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz" > sha.txt
-          shasum -a 256 -c sha.txt
+          sha256sum -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
-          find src -maxdepth 2 | head -30
-          xcodebuild -version
+          cat > src/tweak/Makefile <<'MK'
+          TARGET = iphone:clang:latest:13.4
+          ARCHS = arm64
 
-      - name: build
+          include $(THEOS)/makefiles/common.mk
+
+          LIBRARY_NAME = wsgbypass
+          wsgbypass_FILES      = Tweak.xm
+          wsgbypass_CFLAGS     = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-function
+          wsgbypass_FRAMEWORKS = Foundation UIKit Security
+          wsgbypass_LDFLAGS    = -install_name @loader_path/Frameworks/libwsgbypass.dylib
+
+          include $(THEOS_MAKE_PATH)/library.mk
+          MK
+          find src -maxdepth 2 | head -30
+
+      - name: build with theos docker
         run: |
-          ( cd src && { bash make_release.sh dobby || bash make_release.sh; } ) 2>&1 | tee ci.log
+          docker run --rm -v "$PWD/src:/src" theos/theos:latest bash -lc 'set -e; cd /src/tweak; make clean all; mkdir -p /src/build; f=$(find .theos/obj -name "*.dylib" | head -1); echo "artifact=$f"; cp "$f" /src/build/libwsgbypass.dylib; ls -l /src/build' 2>&1 | tee ci.log
+
+      - name: verify and package
+        run: |
+          set -e
+          cd src
+          python3 tools/verify_dylib.py build/libwsgbypass.dylib | tee -a ../ci.log
+          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --out dist/rootless | tee -a ../ci.log
+          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful | tee -a ../ci.log
 
       - name: save log
         if: always()
