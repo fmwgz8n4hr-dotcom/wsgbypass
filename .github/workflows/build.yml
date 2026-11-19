@@ -19,36 +19,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: toolchain
+      - name: build everything
+        shell: bash
         run: |
+          set -o pipefail
+          exec > >(tee -a ci.log) 2>&1
           set -x
+
           sudo apt-get update -qq
           sudo apt-get install -y -qq clang lld curl unzip make python3
           clang --version
-          ld64.lld --version || true
+          (ld64.lld --version || ld.lld --version) || true
 
-      - name: unpack sources
-        run: |
-          set -e
+          echo "== unpack sources =="
           python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('src.b64','rb').read()))"
           echo "bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz" > sha.txt
           sha256sum -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
-          ls src
+          ls -la src
 
-      - name: iphoneos sdk
-        run: |
-          set -e
+          echo "== fetch sdk =="
           curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
-          unzip -q sdk.zip 'sdks-master/iPhoneOS16.5.sdk/*' -d .
-          du -sh sdks-master/iPhoneOS16.5.sdk
+          unzip -l sdk.zip | grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk' | sort -u -V | tail -5
+          SDKNAME=$(unzip -l sdk.zip | grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk' | sort -u -V | tail -1)
+          echo "SDKNAME=$SDKNAME"
+          unzip -q sdk.zip "$SDKNAME/*" -d sdkdl
+          SDK="$PWD/sdkdl/$SDKNAME"
+          echo "SDK=$SDK"
+          ls "$SDK" | head
 
-      - name: build dylib
-        run: |
-          set -e
-          SDK="$PWD/sdks-master/iPhoneOS16.5.sdk"
-          mkdir -p src/build
+          echo "== compile =="
           cd src
+          mkdir -p build
           clang -target arm64-apple-ios13.4.0 \
             -isysroot "$SDK" -F"$SDK/System/Library/Frameworks" \
             -fuse-ld=lld -fobjc-arc -O2 -Wall \
@@ -56,18 +58,17 @@ jobs:
             -I tweak -x objective-c -dynamiclib \
             -install_name @loader_path/Frameworks/libwsgbypass.dylib \
             tweak/Tweak.xm -o build/libwsgbypass.dylib \
-            -framework Foundation -framework UIKit -framework Security \
-            2>&1 | tee ../ci.log
+            -framework Foundation -framework UIKit -framework Security
           ls -l build
 
-      - name: verify and package
-        run: |
-          set -e
-          cd src
-          python3 tools/verify_dylib.py build/libwsgbypass.dylib 2>&1 | tee -a ../ci.log
-          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --out dist/rootless 2>&1 | tee -a ../ci.log
-          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful 2>&1 | tee -a ../ci.log
+          echo "== verify =="
+          python3 tools/verify_dylib.py build/libwsgbypass.dylib
+
+          echo "== package =="
+          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --out dist/rootless
+          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful
           ls -l build dist/rootless dist/rootful
+          echo "== DONE =="
 
       - name: save log
         if: always()
