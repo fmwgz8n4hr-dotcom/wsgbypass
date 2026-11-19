@@ -1,4 +1,12 @@
-Unable to find image 'theos/theos:latest' locally
-docker: Error response from daemon: pull access denied for theos/theos, repository does not exist or may require 'docker login'
-
-Run 'docker run --help' for more information
+tweak/Tweak.xm:18:9: fatal error: 'sys/ptrace.h' file not found
+#import <sys/ptrace.h>
+        ^~~~~~~~~~~~~~
+1 error generated.
+Traceback (most recent call last):
+  File "/home/runner/work/wsgbypass/wsgbypass/src/tools/verify_dylib.py", line 90, in <module>
+    sys.exit(main(sys.argv[1]))
+  File "/home/runner/work/wsgbypass/wsgbypass/src/tools/verify_dylib.py", line 23, in main
+    d = open(path, 'rb').read()
+FileNotFoundError: [Errno 2] No such file or directory: 'build/libwsgbypass.dylib'
+找不到 dylib: build/libwsgbypass.dylib
+找不到 dylib: build/libwsgbypass.dylib
