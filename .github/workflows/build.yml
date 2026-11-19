@@ -1,0 +1,45 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: unpack
+        run: |
+          set -e
+          python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('src.b64','rb').read()))"
+          echo "bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz" > sha.txt
+          shasum -a 256 -c sha.txt
+          mkdir -p src && tar xzf s.tar.gz -C src
+          find src -maxdepth 2 | head -30
+
+      - name: build
+        run: |
+          ( cd src && { bash make_release.sh dobby || bash make_release.sh; } ) 2>&1 | tee ci.log
+
+      - name: save log
+        if: always()
+        run: |
+          git config user.name ci
+          git config user.email ci@users.noreply.github.com
+          git add -f ci.log && git commit -m "ci log" && git push || true
+
+      - name: release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: wsgbypass 1.0.0
+          files: |
+            src/build/libwsgbypass.dylib
+            src/dist/rootless/*.deb
+            src/dist/rootful/*.deb
