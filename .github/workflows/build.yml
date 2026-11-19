@@ -15,44 +15,59 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: unpack
+      - name: toolchain
+        run: |
+          set -x
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang lld curl unzip make python3
+          clang --version
+          ld64.lld --version || true
+
+      - name: unpack sources
         run: |
           set -e
           python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('src.b64','rb').read()))"
           echo "bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz" > sha.txt
           sha256sum -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
-          cat > src/tweak/Makefile <<'MK'
-          TARGET = iphone:clang:latest:13.4
-          ARCHS = arm64
+          ls src
 
-          include $(THEOS)/makefiles/common.mk
-
-          LIBRARY_NAME = wsgbypass
-          wsgbypass_FILES      = Tweak.xm
-          wsgbypass_CFLAGS     = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-function
-          wsgbypass_FRAMEWORKS = Foundation UIKit Security
-          wsgbypass_LDFLAGS    = -install_name @loader_path/Frameworks/libwsgbypass.dylib
-
-          include $(THEOS_MAKE_PATH)/library.mk
-          MK
-          find src -maxdepth 2 | head -30
-
-      - name: build with theos docker
+      - name: iphoneos sdk
         run: |
-          docker run --rm -v "$PWD/src:/src" theos/theos:latest bash -lc 'set -e; cd /src/tweak; make clean all; mkdir -p /src/build; f=$(find .theos/obj -name "*.dylib" | head -1); echo "artifact=$f"; cp "$f" /src/build/libwsgbypass.dylib; ls -l /src/build' 2>&1 | tee ci.log
+          set -e
+          curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
+          unzip -q sdk.zip 'sdks-master/iPhoneOS16.5.sdk/*' -d .
+          du -sh sdks-master/iPhoneOS16.5.sdk
+
+      - name: build dylib
+        run: |
+          set -e
+          SDK="$PWD/sdks-master/iPhoneOS16.5.sdk"
+          mkdir -p src/build
+          cd src
+          clang -target arm64-apple-ios13.4.0 \
+            -isysroot "$SDK" -F"$SDK/System/Library/Frameworks" \
+            -fuse-ld=lld -fobjc-arc -O2 -Wall \
+            -Wno-unused-function -Wno-deprecated-declarations \
+            -I tweak -x objective-c -dynamiclib \
+            -install_name @loader_path/Frameworks/libwsgbypass.dylib \
+            tweak/Tweak.xm -o build/libwsgbypass.dylib \
+            -framework Foundation -framework UIKit -framework Security \
+            2>&1 | tee ../ci.log
+          ls -l build
 
       - name: verify and package
         run: |
           set -e
           cd src
-          python3 tools/verify_dylib.py build/libwsgbypass.dylib | tee -a ../ci.log
-          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --out dist/rootless | tee -a ../ci.log
-          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful | tee -a ../ci.log
+          python3 tools/verify_dylib.py build/libwsgbypass.dylib 2>&1 | tee -a ../ci.log
+          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --out dist/rootless 2>&1 | tee -a ../ci.log
+          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful 2>&1 | tee -a ../ci.log
+          ls -l build dist/rootless dist/rootful
 
       - name: save log
         if: always()
