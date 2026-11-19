@@ -10,3 +10,92 @@ Traceback (most recent call last):
 FileNotFoundError: [Errno 2] No such file or directory: 'build/libwsgbypass.dylib'
 找不到 dylib: build/libwsgbypass.dylib
 找不到 dylib: build/libwsgbypass.dylib
++ sudo apt-get update -qq
++ sudo apt-get install -y -qq clang lld curl unzip make python3
+Selecting previously unselected package clang.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 265161 files and directories currently installed.)
+Preparing to unpack .../clang_1%3a14.0-55~exp2_amd64.deb ...
+Unpacking clang (1:14.0-55~exp2) ...
+Selecting previously unselected package lld:amd64.
+Preparing to unpack .../lld_1%3a14.0-55~exp2_amd64.deb ...
+Unpacking lld:amd64 (1:14.0-55~exp2) ...
+Setting up lld:amd64 (1:14.0-55~exp2) ...
+Setting up clang (1:14.0-55~exp2) ...
+Processing triggers for man-db (2.10.2-1) ...
+Not building database; man-db/auto-update is not 'true'.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
++ clang --version
+Ubuntu clang version 14.0.0-1ubuntu1.1
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
++ ld64.lld --version
+/home/runner/work/_temp/1e9bf080-3a5e-402d-a4b1-4cfd874e1bfb.sh: line 8: ld64.lld: command not found
++ ld.lld --version
+Ubuntu LLD 14.0.0 (compatible with GNU linkers)
++ echo '== unpack sources =='
+== unpack sources ==
++ python3 -c 'import base64;open('\''s.tar.gz'\'','\''wb'\'').write(base64.b64decode(open('\''src.b64'\'','\''rb'\'').read()))'
++ echo 'bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz'
++ sha256sum -c sha.txt
+s.tar.gz: OK
++ mkdir -p src
++ tar xzf s.tar.gz -C src
++ ls -la src
+total 28
+drwxr-xr-x 4 runner runner 4096 Nov 19 19:31 .
+drwxr-xr-x 5 runner runner 4096 Nov 19 23:56 ..
+-rw------- 1 runner runner 1375 Nov 19 19:31 Makefile.plain
+-rwxr-xr-x 1 runner runner 1632 Nov 19 19:31 build_plain.sh
+-rwxr-xr-x 1 runner runner  730 Nov 19 19:31 make_release.sh
+drwxr-xr-x 2 runner runner 4096 Nov 19 19:31 tools
+drwxr-xr-x 2 runner runner 4096 Nov 19 19:31 tweak
++ echo '== fetch sdk =='
+== fetch sdk ==
++ curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
++ unzip -l sdk.zip
++ grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk'
++ sort -u -V
++ tail -5
+sdks-master/iPhoneOS12.4.sdk
+sdks-master/iPhoneOS13.7.sdk
+sdks-master/iPhoneOS14.5.sdk
+sdks-master/iPhoneOS15.6.sdk
+sdks-master/iPhoneOS16.5.sdk
+++ unzip -l sdk.zip
+++ grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk'
+++ sort -u -V
+++ tail -1
++ SDKNAME=sdks-master/iPhoneOS16.5.sdk
++ echo SDKNAME=sdks-master/iPhoneOS16.5.sdk
+SDKNAME=sdks-master/iPhoneOS16.5.sdk
++ unzip -q sdk.zip 'sdks-master/iPhoneOS16.5.sdk/*' -d sdkdl
++ SDK=/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk
++ echo SDK=/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk
+SDK=/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk
++ ls /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk
++ head
+Developer
+Entitlements.plist
+SDKSettings.json
+SDKSettings.plist
+System
+usr
++ echo '== compile =='
+== compile ==
++ cd src
++ mkdir -p build
++ clang -target arm64-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib tweak/Tweak.xm -o build/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security
+tweak/Tweak.xm:18:9: fatal error: 'sys/ptrace.h' file not found
+#import <sys/ptrace.h>
+        ^~~~~~~~~~~~~~
+1 error generated.
