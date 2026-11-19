@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +27,7 @@ jobs:
           shasum -a 256 -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
           find src -maxdepth 2 | head -30
+          xcodebuild -version
 
       - name: build
         run: |
