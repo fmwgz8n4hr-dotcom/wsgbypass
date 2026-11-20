@@ -22,6 +22,7 @@ jobs:
       - name: build everything
         shell: bash
         run: |
+          rm -f ci.log
           set -o pipefail
           exec > >(tee -a ci.log) 2>&1
           set -x
@@ -29,7 +30,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq clang lld curl unzip make python3
           clang --version
-          ls /usr/lib/llvm-*/bin/ | grep -i 'ld64\|lld' || true
           if ! command -v ld64.lld >/dev/null; then
             cand=$(ls /usr/lib/llvm-*/bin/ld64.lld 2>/dev/null | head -1)
             [ -n "$cand" ] && sudo ln -sf "$cand" /usr/local/bin/ld64.lld
@@ -42,9 +42,29 @@ jobs:
           sha256sum -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
 
-          echo "== patch ptrace header (iOS SDK 没有 sys/ptrace.h) =="
+          echo "== compat header (private Security types) =="
           sed -i 's|#import <sys/ptrace.h>|extern int ptrace(int, pid_t, caddr_t, int);|' src/tweak/Tweak.xm
-          grep -n 'extern int ptrace\|PT_DENY_ATTACH\|sys/proc.h' src/tweak/Tweak.xm
+          cat > src/tweak/compat_private.h <<'HDR'
+          #pragma once
+          #include <CoreFoundation/CoreFoundation.h>
+          #include <dlfcn.h>
+          #include <stdint.h>
+
+          typedef struct __SecTask *SecTaskRef;
+          typedef struct __SecCode *SecCodeRef;
+          typedef struct __SecStaticCode *SecStaticCodeRef;
+          typedef struct __SecRequirement *SecRequirementRef;
+          typedef uint32_t SecCSFlags;
+
+          static inline CFStringRef _wsg_secinfo(const char *n) {
+              CFStringRef v = *(CFStringRef *)dlsym(RTLD_DEFAULT, n);
+              return v ? v : CFSTR("__missing__");
+          }
+          #define kSecCodeInfoIdentifier     _wsg_secinfo("kSecCodeInfoIdentifier")
+          #define kSecCodeInfoTeamIdentifier _wsg_secinfo("kSecCodeInfoTeamIdentifier")
+          #define kSecCodeInfoUnique         _wsg_secinfo("kSecCodeInfoUnique")
+          #define kSecCodeInfoFlags          _wsg_secinfo("kSecCodeInfoFlags")
+          HDR
 
           echo "== fetch sdk =="
           curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
@@ -60,7 +80,8 @@ jobs:
             -isysroot "$SDK" -F"$SDK/System/Library/Frameworks" \
             -fuse-ld=lld -fobjc-arc -O2 -Wall \
             -Wno-unused-function -Wno-deprecated-declarations \
-            -I tweak -x objective-c -dynamiclib \
+            -I tweak -include tweak/compat_private.h \
+            -x objective-c -dynamiclib \
             -install_name @loader_path/Frameworks/libwsgbypass.dylib \
             tweak/Tweak.xm -o build/libwsgbypass.dylib \
             -framework Foundation -framework UIKit -framework Security
