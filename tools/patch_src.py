@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""对解包后的源码打补丁：ptrace 头、MSHookFunction 兜底、fat 校验放宽。"""
+"""对解包后的源码打补丁：ptrace 头、MSHookFunction 兜底、fat 校验、构造器延后。"""
 import os, sys
 
 root = sys.argv[1] if len(sys.argv) > 1 else 'src'
@@ -89,7 +89,7 @@ OLD_V = ('    if len(data) >= 4 and struct.unpack_from("<I", data, 0)[0] != 0xFE
          '            errs.append(f"不是 dylib（filetype={filetype}）")')
 NEW_V = ('    magic = struct.unpack_from("<I", data, 0)[0] if len(data) >= 4 else 0\n'
          '    if magic in (0xBEBAFECA, 0xBFBAFECA):\n'
-         '        pass  # fat binary (arm64 + arm64e)\n'
+         '        pass  # fat, arm64 + arm64e slices\n'
          '    elif magic != 0xFEEDFACF:\n'
          '        errs.append("neither thin nor fat Mach-O")\n'
          '    elif len(data) >= 16:\n'
@@ -102,3 +102,25 @@ if OLD_V not in s2:
     sys.exit('FAIL: build_deb validate anchor not found')
 open(b, 'w', encoding='utf-8').write(s2.replace(OLD_V, NEW_V))
 print('build_deb patched')
+
+t = open(p, encoding='utf-8').read()
+OLD_INIT = ('__attribute__((constructor))\n'
+            'static void wsgbypass_init(void) {\n'
+            '    @autoreleasepool {\n')
+NEW_INIT = ('static void wsg_install_all(void);\n'
+            '__attribute__((constructor))\n'
+            'static void wsgbypass_init(void) {\n'
+            '    NSLog(@"[wsgbypass] LOADED pid=%d", getpid());\n'
+            '    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(4 * NSEC_PER_SEC)),\n'
+            '                   dispatch_get_main_queue(), ^{\n'
+            '        @try { wsg_install_all(); }\n'
+            '        @catch (NSException *e) { NSLog(@"[wsgbypass] install failed: %@", e); }\n'
+            '    });\n'
+            '}\n'
+            'static void wsg_install_all(void) {\n'
+            '    @autoreleasepool {\n')
+if OLD_INIT not in t:
+    sys.exit('FAIL: constructor anchor not found')
+t = t.replace(OLD_INIT, NEW_INIT)
+open(p, 'w', encoding='utf-8').write(t)
+print('constructor deferred')
