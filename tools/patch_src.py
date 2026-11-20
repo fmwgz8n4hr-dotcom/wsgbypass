@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""对解包后的源码打补丁：ptrace 头、MSHookFunction 兜底、fat 校验、构造器延后。"""
+"""对解包后的源码打补丁：ptrace 头、MSHookFunction 兜底、fat 校验、构造器延后、扫描收窄。"""
 import os, sys
 
 root = sys.argv[1] if len(sys.argv) > 1 else 'src'
@@ -124,3 +124,24 @@ if OLD_INIT not in t:
 t = t.replace(OLD_INIT, NEW_INIT)
 open(p, 'w', encoding='utf-8').write(t)
 print('constructor deferred')
+
+t2 = open(p, encoding='utf-8').read()
+OLD_KEYS = ('        "tamper", "Tamper", "jailbr", "Jailbr", "cydia", "Cydia",\n'
+            '        "substrate", "Substrate", "frida", "Frida", "cycript",\n')
+NEW_KEYS = ('        "tamper", "Tamper", "jailbr", "Jailbr", "cydia", "Cydia",\n'
+            '        "frida", "Frida", "cycript",\n')
+if OLD_KEYS not in t2:
+    sys.exit('FAIL: sweep keys anchor not found')
+t2 = t2.replace(OLD_KEYS, NEW_KEYS)
+OLD_LOOP = ('    for (unsigned int i = 0; i < total; i++) {\n'
+            '        Class c = classes[i];\n')
+NEW_LOOP = ('    for (unsigned int i = 0; i < total; i++) {\n'
+            '        Class c = classes[i];\n'
+            '        const char *cn = class_getName(c);\n'
+            '        if (!cn || (!strstr(cn, "Tamper") && !strstr(cn, "Security") &&\n'
+            '                    !strstr(cn, "Safety") && !strstr(cn, "Jailbr"))) continue;\n')
+if OLD_LOOP not in t2:
+    sys.exit('FAIL: sweep loop anchor not found')
+t2 = t2.replace(OLD_LOOP, NEW_LOOP)
+open(p, 'w', encoding='utf-8').write(t2)
+print('sweep narrowed')
