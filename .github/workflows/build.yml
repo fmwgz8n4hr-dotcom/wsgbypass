@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -29,24 +29,29 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq clang lld curl unzip make python3
           clang --version
-          (ld64.lld --version || ld.lld --version) || true
+          ls /usr/lib/llvm-*/bin/ | grep -i 'ld64\|lld' || true
+          if ! command -v ld64.lld >/dev/null; then
+            cand=$(ls /usr/lib/llvm-*/bin/ld64.lld 2>/dev/null | head -1)
+            [ -n "$cand" ] && sudo ln -sf "$cand" /usr/local/bin/ld64.lld
+          fi
+          ld64.lld --version || echo "NO ld64.lld"
 
           echo "== unpack sources =="
           python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('src.b64','rb').read()))"
           echo "bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz" > sha.txt
           sha256sum -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
-          ls -la src
+
+          echo "== patch ptrace header (iOS SDK 没有 sys/ptrace.h) =="
+          sed -i 's|#import <sys/ptrace.h>|extern int ptrace(int, pid_t, caddr_t, int);|' src/tweak/Tweak.xm
+          grep -n 'extern int ptrace\|PT_DENY_ATTACH\|sys/proc.h' src/tweak/Tweak.xm
 
           echo "== fetch sdk =="
           curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
-          unzip -l sdk.zip | grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk' | sort -u -V | tail -5
           SDKNAME=$(unzip -l sdk.zip | grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk' | sort -u -V | tail -1)
           echo "SDKNAME=$SDKNAME"
           unzip -q sdk.zip "$SDKNAME/*" -d sdkdl
           SDK="$PWD/sdkdl/$SDKNAME"
-          echo "SDK=$SDK"
-          ls "$SDK" | head
 
           echo "== compile =="
           cd src
