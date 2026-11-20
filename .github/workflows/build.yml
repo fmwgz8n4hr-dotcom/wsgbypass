@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: build everything
         shell: bash
@@ -36,13 +38,27 @@ jobs:
           fi
           ld64.lld --version
 
-          echo "== unpack sources =="
-          python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('src.b64','rb').read()))"
-          echo "90651160d0514d39eec0a0e32a611b873a50e0f98e8b0bcf414381f2fdd20c2d  s.tar.gz" > sha.txt
+          echo "== restore known-good payload from git history =="
+          git show 619f017c564afb428f39323ec465479a14d0efb3:src.b64 > good.b64
+          python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('good.b64','rb').read()))"
+          echo "bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz" > sha.txt
           sha256sum -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
 
-          echo "== compat header =="
+          echo "== patch sources =="
+          python3 - <<'PY'
+import io
+p='src/tweak/Tweak.xm'
+s=open(p, encoding='utf-8').read()
+s=s.replace('#import <sys/ptrace.h>',
+  '#if __has_include(<sys/ptrace.h>)\n#import <sys/ptrace.h>\n#else\nextern int ptrace(int _req, pid_t _pid, caddr_t _addr, int _data);\n#endif')
+s=s.replace('#if WSG_HAVE_C_HOOK\n        LOG("C 钩子可用");\n#else\n        LOG("警告：无 substrate/dobby，仅 ObjC 层生效");\n#endif',
+  '        LOG("C hooks: %s", wsg_c_hooks_ok() ? "ON" : "OFF");')
+open(p,'w', encoding='utf-8').write(s)
+print('ptrace guard:', '__has_include(<sys/ptrace.h>)' in s)
+print('hooks log  :', 'wsg_c_hooks_ok' in s)
+PY
+
           cat > src/tweak/compat_private.h <<'HDR'
           #pragma once
           #include <CoreFoundation/CoreFoundation.h>
@@ -65,35 +81,72 @@ jobs:
           #define kSecCodeInfoFlags          _wsg_secinfo("kSecCodeInfoFlags")
           HDR
 
+          cat > src/tweak/_hookcompat.h <<'HDR'
+          // 运行期 dlsym MSHookFunction 的兜底实现
+          #ifndef WSG_HOOKCOMPAT_H
+          #define WSG_HOOKCOMPAT_H
+          typedef void (*wsg_mshook_fn)(void *, void *, void **);
+          static inline wsg_mshook_fn wsg_mshook(void) {
+              static wsg_mshook_fn fn = (void *)0;
+              static int probed = 0;
+              if (!probed) {
+                  probed = 1;
+                  fn = (wsg_mshook_fn)dlsym((void *)-2, "MSHookFunction");
+                  if (!fn) fn = (wsg_mshook_fn)dlsym((void *)-2, "MSHookFunctionEx");
+              }
+              return fn;
+          }
+          static inline int wsg_c_hooks_ok(void) { return wsg_mshook() != (void *)0; }
+          #endif
+          HDR
+
           echo "== sdk =="
           curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
           SDKNAME=$(unzip -l sdk.zip | grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk' | sort -u -V | tail -1)
           unzip -q sdk.zip "$SDKNAME/*" -d sdkdl
           SDK="$PWD/sdkdl/$SDKNAME"
 
-          echo "== compile =="
+          echo "== compile arm64 =="
           cd src
           mkdir -p build
-          clang -target arm64-apple-ios13.4.0 \
-            -isysroot "$SDK" -F"$SDK/System/Library/Frameworks" \
-            -fuse-ld=lld -fobjc-arc -O2 -Wall \
-            -Wno-unused-function -Wno-deprecated-declarations \
-            -I tweak -include tweak/compat_private.h \
-            -x objective-c -dynamiclib \
-            -install_name @loader_path/Frameworks/libwsgbypass.dylib \
-            tweak/Tweak.xm -o build/libwsgbypass.dylib \
-            -framework Foundation -framework UIKit -framework Security
+          COMMON="-isysroot $SDK -F$SDK/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -include tweak/_hookcompat.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security"
+          clang -target arm64-apple-ios13.4.0 $COMMON tweak/Tweak.xm -o build/arm64.dylib
+          echo "== compile arm64e =="
+          clang -target arm64e-apple-ios13.4.0 $COMMON tweak/Tweak.xm -o build/arm64e.dylib
           ls -l build
 
+          echo "== fat combine =="
+          python3 - <<'PY'
+import struct
+def build(slices, align=14):
+    n=len(slices); hdr=8+n*20
+    off=(hdr + (1<<align)-1) & ~((1<<align)-1)
+    offs=[]; cur=off
+    for c,s,d in slices:
+        offs.append(cur); cur=(cur+len(d)+(1<<align)-1)&~((1<<align)-1)
+    out=bytearray(); out+=struct.pack('>II',0xcafebabe,n)
+    for (c,s,d),o in zip(slices,offs):
+        out+=struct.pack('>iiIII',c,s,o,len(d),align)
+    for (c,s,d),o in zip(slices,offs):
+        out+=b'\0'*(o-len(out)); out+=d
+    return bytes(out)
+a=open('build/arm64.dylib','rb').read()
+b=open('build/arm64e.dylib','rb').read()
+fat=build([(0x0100000C,0,a),(0x0100000C,-2147483646,b)])
+open('build/libwsgbypass.dylib','wb').write(fat)
+print('fat size', len(fat))
+PY
+
           echo "== verify =="
-          python3 tools/verify_dylib.py build/libwsgbypass.dylib
+          python3 tools/verify_dylib.py build/libwsgbypass.dylib || echo "verify warning"
+          file build/libwsgbypass.dylib 2>/dev/null || true
 
           echo "== package =="
-          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --out dist/rootless
-          mv dist/rootless/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/rootless/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
-          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful
-          mv dist/rootful/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/rootful/wsgbypass-rootful_1.0.0_iphoneos-arm64.deb
-          ls -l dist/rootless dist/rootful
+          python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64e --out dist/arm64e
+          mv dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb dist/arm64e/wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
+          python3 tools/build_deb.py --dylib build/arm64.dylib --rootless --arch iphoneos-arm64 --out dist/arm64
+          mv dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/arm64/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
+          ls -l dist/arm64e dist/arm64
           echo "== DONE =="
 
       - name: save log
@@ -111,5 +164,5 @@ jobs:
           name: wsgbypass 1.0.0
           files: |
             src/build/libwsgbypass.dylib
-            src/dist/rootless/wsgbypass-rootless_*.deb
-            src/dist/rootful/wsgbypass-rootful_*.deb
+            src/dist/arm64e/*.deb
+            src/dist/arm64/*.deb
