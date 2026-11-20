@@ -1,7 +1,7 @@
 + sudo apt-get update -qq
 + sudo apt-get install -y -qq clang lld curl unzip make python3
 Selecting previously unselected package clang.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216720 files and directories currently installed.)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216752 files and directories currently installed.)
 Preparing to unpack .../clang_1%3a18.0-59~exp2_amd64.deb ...
 Unpacking clang (1:18.0-59~exp2) ...
 Selecting previously unselected package lld:amd64.
@@ -27,8 +27,8 @@ Target: x86_64-pc-linux-gnu
 Thread model: posix
 InstalledDir: /usr/bin
 + command -v ld64.lld
-++ head -1
 ++ ls /usr/lib/llvm-16/bin/ld64.lld /usr/lib/llvm-17/bin/ld64.lld /usr/lib/llvm-18/bin/ld64.lld
+++ head -1
 + cand=/usr/lib/llvm-16/bin/ld64.lld
 + '[' -n /usr/lib/llvm-16/bin/ld64.lld ']'
 + sudo ln -sf /usr/lib/llvm-16/bin/ld64.lld /usr/local/bin/ld64.lld
@@ -65,13 +65,13 @@ fat 208440 B  (arm64 93752 / arm64e 93752)
 + ls -l build dist/arm64
 build:
 total 300
--rwxr-xr-x 1 runner runner  93752 Nov 20 04:41 arm64.dylib
--rwxr-xr-x 1 runner runner  93752 Nov 20 04:41 arm64e.dylib
--rw-r--r-- 1 runner runner 208440 Nov 20 04:41 libwsgbypass.dylib
+-rwxr-xr-x 1 runner runner  93752 Nov 20 05:05 arm64.dylib
+-rwxr-xr-x 1 runner runner  93752 Nov 20 05:05 arm64e.dylib
+-rw-r--r-- 1 runner runner 208440 Nov 20 05:05 libwsgbypass.dylib
 
 dist/arm64:
 total 48
--rwxr-xr-x 1 runner runner 93752 Nov 20 04:41 libwsgbypass-arm64.dylib
+-rwxr-xr-x 1 runner runner 93752 Nov 20 05:05 libwsgbypass-arm64.dylib
 + python3 tools/verify_dylib.py build/arm64.dylib
 文件: build/arm64.dylib  (93752 B)
   [OK]   64 位 Mach-O  0xfeedfacf
@@ -106,14 +106,14 @@ total 48
 [+] dylib   : build/libwsgbypass.dylib (208440 B)
 [+] 布局    : rootless (/var/jb)
 [+] 过滤    : com.xiaojukeji.didi
-[+] 输出    : dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (32694 B)
+[+] 输出    : dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (32692 B)
 + mv dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/arm64/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 + ls -l dist/arm64e dist/arm64
 dist/arm64:
 total 80
--rwxr-xr-x 1 runner runner 93752 Nov 20 04:41 libwsgbypass-arm64.dylib
--rw-r--r-- 1 runner runner 32694 Nov 20 04:41 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
+-rwxr-xr-x 1 runner runner 93752 Nov 20 05:05 libwsgbypass-arm64.dylib
+-rw-r--r-- 1 runner runner 32692 Nov 20 05:05 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 
 dist/arm64e:
 total 32
--rw-r--r-- 1 runner runner 32696 Nov 20 04:41 wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
+-rw-r--r-- 1 runner runner 32696 Nov 20 05:05 wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
