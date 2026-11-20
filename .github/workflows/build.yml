@@ -42,6 +42,7 @@ jobs:
           mkdir -p src && tar xzf s.tar.gz -C src
           python3 tools/patch_src.py src
           cp tools/smslog.m src/tweak/smslog.m
+          cp tools/devreset.m src/tweak/devreset.m
           curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
           SDKNAME=$(unzip -l sdk.zip | grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk' | sort -u -V | tail -1)
           unzip -q sdk.zip "$SDKNAME/*" -d sdkdl
@@ -49,8 +50,8 @@ jobs:
           cd src
           mkdir -p build dist/arm64
           FLAGS="-isysroot $SDK -F$SDK/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security"
-          clang -target arm64-apple-ios13.4.0  $FLAGS tweak/Tweak.xm tweak/smslog.m -o build/arm64.dylib
-          clang -target arm64e-apple-ios13.4.0 $FLAGS tweak/Tweak.xm tweak/smslog.m -o build/arm64e.dylib
+          clang -target arm64-apple-ios13.4.0  $FLAGS tweak/Tweak.xm tweak/smslog.m tweak/devreset.m -o build/arm64.dylib
+          clang -target arm64e-apple-ios13.4.0 $FLAGS tweak/Tweak.xm tweak/smslog.m tweak/devreset.m -o build/arm64e.dylib
           python3 ../tools/make_fat.py build/arm64.dylib build/arm64e.dylib build/libwsgbypass.dylib
           cp build/arm64.dylib dist/arm64/libwsgbypass-arm64.dylib
           ls -l build dist/arm64
