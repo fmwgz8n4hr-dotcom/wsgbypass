@@ -1,7 +1,7 @@
 + sudo apt-get update -qq
 + sudo apt-get install -y -qq clang lld curl unzip make python3
 Selecting previously unselected package clang.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216752 files and directories currently installed.)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216720 files and directories currently installed.)
 Preparing to unpack .../clang_1%3a18.0-59~exp2_amd64.deb ...
 Unpacking clang (1:18.0-59~exp2) ...
 Selecting previously unselected package lld:amd64.
@@ -62,20 +62,20 @@ sweep narrowed
 + clang -target arm64-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m -o build/arm64.dylib
 + clang -target arm64e-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m -o build/arm64e.dylib
 + python3 ../tools/make_fat.py build/arm64.dylib build/arm64e.dylib build/libwsgbypass.dylib
-fat 208656 B  (arm64 93968 / arm64e 93968)
+fat 208664 B  (arm64 93976 / arm64e 93976)
 + cp build/arm64.dylib dist/arm64/libwsgbypass-arm64.dylib
 + ls -l build dist/arm64
 build:
 total 300
--rwxr-xr-x 1 runner runner  93968 Nov 20 05:06 arm64.dylib
--rwxr-xr-x 1 runner runner  93968 Nov 20 05:06 arm64e.dylib
--rw-r--r-- 1 runner runner 208656 Nov 20 05:06 libwsgbypass.dylib
+-rwxr-xr-x 1 runner runner  93976 Nov 20 05:33 arm64.dylib
+-rwxr-xr-x 1 runner runner  93976 Nov 20 05:33 arm64e.dylib
+-rw-r--r-- 1 runner runner 208664 Nov 20 05:33 libwsgbypass.dylib
 
 dist/arm64:
 total 48
--rwxr-xr-x 1 runner runner 93968 Nov 20 05:06 libwsgbypass-arm64.dylib
+-rwxr-xr-x 1 runner runner 93976 Nov 20 05:33 libwsgbypass-arm64.dylib
 + python3 tools/verify_dylib.py build/arm64.dylib
-文件: build/arm64.dylib  (93968 B)
+文件: build/arm64.dylib  (93976 B)
   [OK]   64 位 Mach-O  0xfeedfacf
   [OK]   filetype = MH_DYLIB  6
   [OK]   架构 arm64/arm64e  arm64
@@ -99,23 +99,23 @@ total 48
 
 结论: 可以注入
 + python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64e --out dist/arm64e
-[+] dylib   : build/libwsgbypass.dylib (208656 B)
+[+] dylib   : build/libwsgbypass.dylib (208664 B)
 [+] 布局    : rootless (/var/jb)
 [+] 过滤    : com.xiaojukeji.didi
-[+] 输出    : dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb (33644 B)
+[+] 输出    : dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb (33912 B)
 + mv dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb dist/arm64e/wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
 + python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64 --out dist/arm64
-[+] dylib   : build/libwsgbypass.dylib (208656 B)
+[+] dylib   : build/libwsgbypass.dylib (208664 B)
 [+] 布局    : rootless (/var/jb)
 [+] 过滤    : com.xiaojukeji.didi
-[+] 输出    : dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (33644 B)
+[+] 输出    : dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (33912 B)
 + mv dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/arm64/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 + ls -l dist/arm64e dist/arm64
 dist/arm64:
 total 84
--rwxr-xr-x 1 runner runner 93968 Nov 20 05:06 libwsgbypass-arm64.dylib
--rw-r--r-- 1 runner runner 33644 Nov 20 05:06 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
+-rwxr-xr-x 1 runner runner 93976 Nov 20 05:33 libwsgbypass-arm64.dylib
+-rw-r--r-- 1 runner runner 33912 Nov 20 05:33 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 
 dist/arm64e:
 total 36
--rw-r--r-- 1 runner runner 33644 Nov 20 05:06 wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
+-rw-r--r-- 1 runner runner 33912 Nov 20 05:33 wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
