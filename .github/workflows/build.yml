@@ -34,7 +34,7 @@ jobs:
             cand=$(ls /usr/lib/llvm-*/bin/ld64.lld 2>/dev/null | head -1)
             [ -n "$cand" ] && sudo ln -sf "$cand" /usr/local/bin/ld64.lld
           fi
-          ld64.lld --version || echo "NO ld64.lld"
+          ld64.lld --version
 
           echo "== unpack sources =="
           python3 -c "import base64;open('s.tar.gz','wb').write(base64.b64decode(open('src.b64','rb').read()))"
@@ -42,7 +42,7 @@ jobs:
           sha256sum -c sha.txt
           mkdir -p src && tar xzf s.tar.gz -C src
 
-          echo "== compat header (private Security types) =="
+          echo "== compat header =="
           sed -i 's|#import <sys/ptrace.h>|extern int ptrace(int, pid_t, caddr_t, int);|' src/tweak/Tweak.xm
           cat > src/tweak/compat_private.h <<'HDR'
           #pragma once
@@ -66,10 +66,9 @@ jobs:
           #define kSecCodeInfoFlags          _wsg_secinfo("kSecCodeInfoFlags")
           HDR
 
-          echo "== fetch sdk =="
+          echo "== sdk =="
           curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
           SDKNAME=$(unzip -l sdk.zip | grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk' | sort -u -V | tail -1)
-          echo "SDKNAME=$SDKNAME"
           unzip -q sdk.zip "$SDKNAME/*" -d sdkdl
           SDK="$PWD/sdkdl/$SDKNAME"
 
@@ -92,8 +91,10 @@ jobs:
 
           echo "== package =="
           python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --out dist/rootless
+          mv dist/rootless/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/rootless/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
           python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful
-          ls -l build dist/rootless dist/rootful
+          mv dist/rootful/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/rootful/wsgbypass-rootful_1.0.0_iphoneos-arm64.deb
+          ls -l dist/rootless dist/rootful
           echo "== DONE =="
 
       - name: save log
@@ -111,5 +112,5 @@ jobs:
           name: wsgbypass 1.0.0
           files: |
             src/build/libwsgbypass.dylib
-            src/dist/rootless/*.deb
-            src/dist/rootful/*.deb
+            src/dist/rootless/wsgbypass-rootless_*.deb
+            src/dist/rootful/wsgbypass-rootful_*.deb
