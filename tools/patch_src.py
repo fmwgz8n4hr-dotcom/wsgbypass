@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""对解包后的源码打两处补丁：ptrace 头 + 运行期 MSHookFunction 兜底。"""
+"""对解包后的源码打补丁：ptrace 头、MSHookFunction 兜底、fat 校验放宽。"""
 import os, sys
 
 root = sys.argv[1] if len(sys.argv) > 1 else 'src'
@@ -76,3 +76,29 @@ open(p, 'w', encoding='utf-8').write(t)
 
 open(os.path.join(root, 'tweak', 'compat_private.h'), 'w', encoding='utf-8').write(COMPAT)
 print('patched ok')
+
+b = os.path.join(root, 'tools', 'build_deb.py')
+s2 = open(b, encoding='utf-8').read()
+OLD_V = ('    if len(data) >= 4 and struct.unpack_from("<I", data, 0)[0] != 0xFEEDFACF:\n'
+         '        errs.append("不是 64 位 Mach-O（magic != 0xfeedfacf）")\n'
+         '    elif len(data) >= 16:\n'
+         '        cputype, _, filetype = struct.unpack_from("<iiI", data, 4)\n'
+         '        if cputype != 0x0100000C:\n'
+         '            errs.append(f"不是 arm64（cputype={cputype:#x}）")\n'
+         '        if filetype != 6:\n'
+         '            errs.append(f"不是 dylib（filetype={filetype}）")')
+NEW_V = ('    magic = struct.unpack_from("<I", data, 0)[0] if len(data) >= 4 else 0\n'
+         '    if magic in (0xCAFEBABE, 0xCAFEBABF):\n'
+         '        pass\n'
+         '    elif magic != 0xFEEDFACF:\n'
+         '        errs.append("neither thin nor fat Mach-O")\n'
+         '    elif len(data) >= 16:\n'
+         '        cputype, _, filetype = struct.unpack_from("<iiI", data, 4)\n'
+         '        if cputype != 0x0100000C:\n'
+         '            errs.append(f"不是 arm64（cputype={cputype:#x}）")\n'
+         '        if filetype != 6:\n'
+         '            errs.append(f"不是 dylib（filetype={filetype}）")')
+if OLD_V not in s2:
+    sys.exit('FAIL: build_deb validate anchor not found')
+open(b, 'w', encoding='utf-8').write(s2.replace(OLD_V, NEW_V))
+print('build_deb patched')
