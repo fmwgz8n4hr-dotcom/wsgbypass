@@ -88,8 +88,8 @@ OLD_V = ('    if len(data) >= 4 and struct.unpack_from("<I", data, 0)[0] != 0xFE
          '        if filetype != 6:\n'
          '            errs.append(f"不是 dylib（filetype={filetype}）")')
 NEW_V = ('    magic = struct.unpack_from("<I", data, 0)[0] if len(data) >= 4 else 0\n'
-         '    if magic in (0xCAFEBABE, 0xCAFEBABF):\n'
-         '        pass\n'
+         '    if magic in (0xBEBAFECA, 0xBFBAFECA):\n'
+         '        pass  # fat binary (arm64 + arm64e)\n'
          '    elif magic != 0xFEEDFACF:\n'
          '        errs.append("neither thin nor fat Mach-O")\n'
          '    elif len(data) >= 16:\n'
