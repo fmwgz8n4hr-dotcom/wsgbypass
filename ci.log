@@ -1,7 +1,7 @@
 + sudo apt-get update -qq
 + sudo apt-get install -y -qq clang lld curl unzip make python3
 Selecting previously unselected package clang.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 217092 files and directories currently installed.)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216720 files and directories currently installed.)
 Preparing to unpack .../clang_1%3a18.0-59~exp2_amd64.deb ...
 Unpacking clang (1:18.0-59~exp2) ...
 Selecting previously unselected package lld:amd64.
@@ -27,8 +27,8 @@ Target: x86_64-pc-linux-gnu
 Thread model: posix
 InstalledDir: /usr/bin
 + command -v ld64.lld
-++ ls /usr/lib/llvm-16/bin/ld64.lld /usr/lib/llvm-17/bin/ld64.lld /usr/lib/llvm-18/bin/ld64.lld
 ++ head -1
+++ ls /usr/lib/llvm-16/bin/ld64.lld /usr/lib/llvm-17/bin/ld64.lld /usr/lib/llvm-18/bin/ld64.lld
 + cand=/usr/lib/llvm-16/bin/ld64.lld
 + '[' -n /usr/lib/llvm-16/bin/ld64.lld ']'
 + sudo ln -sf /usr/lib/llvm-16/bin/ld64.lld /usr/local/bin/ld64.lld
@@ -42,20 +42,18 @@ Ubuntu LLD 16.0.6
 s.tar.gz: OK
 + mkdir -p src
 + tar xzf s.tar.gz -C src
-+ echo '== compat header (private Security types) =='
-== compat header (private Security types) ==
++ echo '== compat header =='
+== compat header ==
 + sed -i 's|#import <sys/ptrace.h>|extern int ptrace(int, pid_t, caddr_t, int);|' src/tweak/Tweak.xm
 + cat
-+ echo '== fetch sdk =='
-== fetch sdk ==
++ echo '== sdk =='
+== sdk ==
 + curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
 ++ unzip -l sdk.zip
 ++ grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk'
 ++ sort -u -V
 ++ tail -1
 + SDKNAME=sdks-master/iPhoneOS16.5.sdk
-+ echo SDKNAME=sdks-master/iPhoneOS16.5.sdk
-SDKNAME=sdks-master/iPhoneOS16.5.sdk
 + unzip -q sdk.zip 'sdks-master/iPhoneOS16.5.sdk/*' -d sdkdl
 + SDK=/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk
 + echo '== compile =='
@@ -65,7 +63,7 @@ SDKNAME=sdks-master/iPhoneOS16.5.sdk
 + clang -target arm64-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib tweak/Tweak.xm -o build/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security
 + ls -l build
 total 28
--rwxr-xr-x 1 runner runner 70408 Nov 20 00:05 libwsgbypass.dylib
+-rwxr-xr-x 1 runner runner 70408 Nov 20 00:12 libwsgbypass.dylib
 + echo '== verify =='
 == verify ==
 + python3 tools/verify_dylib.py build/libwsgbypass.dylib
@@ -99,22 +97,20 @@ total 28
 [+] 布局    : rootless (/var/jb)
 [+] 过滤    : com.xiaojukeji.didi
 [+] 输出    : dist/rootless/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (7280 B)
++ mv dist/rootless/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/rootless/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 + python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --out dist/rootful
 [+] dylib   : build/libwsgbypass.dylib (70408 B)
 [+] 布局    : rootful (/)
 [+] 过滤    : com.xiaojukeji.didi
-[+] 输出    : dist/rootful/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (7264 B)
-+ ls -l build dist/rootless dist/rootful
-build:
-total 28
--rwxr-xr-x 1 runner runner 70408 Nov 20 00:05 libwsgbypass.dylib
-
+[+] 输出    : dist/rootful/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (7266 B)
++ mv dist/rootful/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/rootful/wsgbypass-rootful_1.0.0_iphoneos-arm64.deb
++ ls -l dist/rootless dist/rootful
 dist/rootful:
 total 8
--rw-r--r-- 1 runner runner 7264 Nov 20 00:05 com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb
+-rw-r--r-- 1 runner runner 7266 Nov 20 00:12 wsgbypass-rootful_1.0.0_iphoneos-arm64.deb
 
 dist/rootless:
 total 8
--rw-r--r-- 1 runner runner 7280 Nov 20 00:05 com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb
+-rw-r--r-- 1 runner runner 7280 Nov 20 00:12 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 + echo '== DONE =='
 == DONE ==
