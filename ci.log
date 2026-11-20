@@ -1,7 +1,7 @@
 + sudo apt-get update -qq
 + sudo apt-get install -y -qq clang lld curl unzip make python3
 Selecting previously unselected package clang.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216752 files and directories currently installed.)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216380 files and directories currently installed.)
 Preparing to unpack .../clang_1%3a18.0-59~exp2_amd64.deb ...
 Unpacking clang (1:18.0-59~exp2) ...
 Selecting previously unselected package lld:amd64.
@@ -41,6 +41,7 @@ s.tar.gz: OK
 + tar xzf s.tar.gz -C src
 + python3 tools/patch_src.py src
 patched ok
+build_deb patched
 + curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
 ++ unzip -l sdk.zip
 ++ grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk'
@@ -56,8 +57,8 @@ patched ok
 + clang -target arm64e-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm -o build/arm64e.dylib
 + ls -l build
 total 72
--rwxr-xr-x 1 runner runner 87936 Nov 20 00:40 arm64.dylib
--rwxr-xr-x 1 runner runner 87936 Nov 20 00:40 arm64e.dylib
+-rwxr-xr-x 1 runner runner 87936 Nov 20 00:46 arm64.dylib
+-rwxr-xr-x 1 runner runner 87936 Nov 20 00:46 arm64e.dylib
 + python3 ../tools/make_fat.py build/arm64.dylib build/arm64e.dylib build/libwsgbypass.dylib
 fat 202624 B  (arm64 87936 / arm64e 87936)
 + python3 tools/verify_dylib.py build/arm64.dylib
@@ -86,6 +87,6 @@ fat 202624 B  (arm64 87936 / arm64e 87936)
 结论: 可以注入
 + python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64e --out dist/arm64e
 拒绝打包：
-  - 不是 64 位 Mach-O（magic != 0xfeedfacf）
+  - neither thin nor fat Mach-O
 
 先用 `bash build_plain.sh` 编出真正的 build/libwsgbypass.dylib
