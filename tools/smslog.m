@@ -1,4 +1,4 @@
-// smslog.m v2 —— 落盘诊断：写入 App 沙盒 Documents/wsgbypass.log
+// smslog.m v3 —— 落盘诊断：写入 App 沙盒 Documents/wsgbypass.log（已放宽到所有接口）
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
@@ -29,17 +29,19 @@ static void WLog(NSString *fmt, ...) {
 static BOOL Interesting(NSString *u) {
     if (u.length == 0) return NO;
     NSString *l = u.lowercaseString;
-    return ([l containsString:@"passport"] || [l containsString:@"codemt"] ||
-            [l containsString:@"sms"] || [l containsString:@"login"] ||
-            [l containsString:@"signin"] || [l containsString:@"verify"] ||
-            [l containsString:@"cell"] || [l containsString:@"account"]);
+    if (![l hasPrefix:@"http"]) return NO;
+    static const char *skip[] = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".css",
+                                 ".js", ".woff", ".svg", ".ico", ".mp4", NULL};
+    for (int i = 0; skip[i]; i++)
+        if ([l containsString:[NSString stringWithUTF8String:skip[i]]]) return NO;
+    return YES;
 }
 
 static void LogBody(NSString *tag, NSData *d) {
     if (d.length == 0) return;
     NSString *s = [[NSString alloc] initWithData:d encoding:NSUTF8StringEncoding];
     if (!s) { WLog(@"%@ <binary %lu B>", tag, (unsigned long)d.length); return; }
-    if (s.length > 1200) s = [s substringToIndex:1200];
+    if (s.length > 2000) s = [s substringToIndex:2000];
     WLog(@"%@ %@", tag, s);
 }
 
@@ -84,14 +86,18 @@ static id h_json(id self, SEL _cmd, NSData *d, NSJSONReadingOptions opt, NSError
 
 static void (*o_setText)(id, SEL, NSString *);
 static void h_setText(id self, SEL _cmd, NSString *t) {
-    if ([t containsString:@"\u9891\u7e41"] || [t containsString:@"\u7a0d\u540e"])
+    if ([t containsString:@"\u9891\u7e41"] || [t containsString:@"\u7a0d\u540e"] ||
+        [t containsString:@"\u8ba4\u8bc1"] || [t containsString:@"\u98ce\u9669"] ||
+        [t containsString:@"\u5931\u8d25"] || [t containsString:@"\u4e0d\u53ef"] ||
+        [t containsString:@"\u6682\u4e0d"] || [t containsString:@"\u9650\u5236"] ||
+        [t containsString:@"\u4e0d\u652f\u6301"])
         WLog(@"UI \"%@\"", t);
     o_setText(self, _cmd, t);
 }
 
 __attribute__((constructor))
 static void smslog_init(void) {
-    WLog(@"=== LOADED v2 pid=%d bundle=%@ ===", getpid(), [[NSBundle mainBundle] bundleIdentifier]);
+    WLog(@"=== LOADED v3 pid=%d bundle=%@ ===", getpid(), [[NSBundle mainBundle] bundleIdentifier]);
     WLog(@"classes: NSURLSession=%d NSJSONSerialization=%d UILabel=%d CronetEngine=%d",
          objc_getClass("NSURLSession") != nil,
          objc_getClass("NSJSONSerialization") != nil,
