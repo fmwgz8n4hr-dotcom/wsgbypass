@@ -57,8 +57,8 @@ build_deb patched
 + clang -target arm64e-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm -o build/arm64e.dylib
 + ls -l build
 total 72
--rwxr-xr-x 1 runner runner 87936 Nov 20 00:46 arm64.dylib
--rwxr-xr-x 1 runner runner 87936 Nov 20 00:46 arm64e.dylib
+-rwxr-xr-x 1 runner runner 87936 Nov 20 00:55 arm64.dylib
+-rwxr-xr-x 1 runner runner 87936 Nov 20 00:55 arm64e.dylib
 + python3 ../tools/make_fat.py build/arm64.dylib build/arm64e.dylib build/libwsgbypass.dylib
 fat 202624 B  (arm64 87936 / arm64e 87936)
 + python3 tools/verify_dylib.py build/arm64.dylib
@@ -86,7 +86,22 @@ fat 202624 B  (arm64 87936 / arm64e 87936)
 
 结论: 可以注入
 + python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64e --out dist/arm64e
-拒绝打包：
-  - neither thin nor fat Mach-O
+[+] dylib   : build/libwsgbypass.dylib (202624 B)
+[+] 布局    : rootless (/var/jb)
+[+] 过滤    : com.xiaojukeji.didi
+[+] 输出    : dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb (20246 B)
++ mv dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb dist/arm64e/wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
++ python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64 --out dist/arm64
+[+] dylib   : build/libwsgbypass.dylib (202624 B)
+[+] 布局    : rootless (/var/jb)
+[+] 过滤    : com.xiaojukeji.didi
+[+] 输出    : dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (20246 B)
++ mv dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/arm64/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
++ ls -l dist/arm64e dist/arm64
+dist/arm64:
+total 20
+-rw-r--r-- 1 runner runner 20246 Nov 20 00:55 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 
-先用 `bash build_plain.sh` 编出真正的 build/libwsgbypass.dylib
+dist/arm64e:
+total 20
+-rw-r--r-- 1 runner runner 20246 Nov 20 00:55 wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
