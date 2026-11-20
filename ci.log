@@ -1,7 +1,7 @@
 + sudo apt-get update -qq
 + sudo apt-get install -y -qq clang lld curl unzip make python3
 Selecting previously unselected package clang.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216720 files and directories currently installed.)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216752 files and directories currently installed.)
 Preparing to unpack .../clang_1%3a18.0-59~exp2_amd64.deb ...
 Unpacking clang (1:18.0-59~exp2) ...
 Selecting previously unselected package lld:amd64.
@@ -32,12 +32,60 @@ InstalledDir: /usr/bin
 + cand=/usr/lib/llvm-16/bin/ld64.lld
 + '[' -n /usr/lib/llvm-16/bin/ld64.lld ']'
 + sudo ln -sf /usr/lib/llvm-16/bin/ld64.lld /usr/local/bin/ld64.lld
-+ ld64.lld --version
-Ubuntu LLD 16.0.6
-+ echo '== unpack sources =='
-== unpack sources ==
-+ python3 -c 'import base64;open('\''s.tar.gz'\'','\''wb'\'').write(base64.b64decode(open('\''src.b64'\'','\''rb'\'').read()))'
-+ echo '90651160d0514d39eec0a0e32a611b873a50e0f98e8b0bcf414381f2fdd20c2d  s.tar.gz'
++ git show 619f017c564afb428f39323ec465479a14d0efb3:src.b64
++ python3 -c 'import base64;open('\''s.tar.gz'\'','\''wb'\'').write(base64.b64decode(open('\''good.b64'\'','\''rb'\'').read()))'
++ echo 'bb64e1a8b6b445afeab30f7f7b5a3f22a3d67c251bc341f3329df18edd9ae6b6  s.tar.gz'
 + sha256sum -c sha.txt
-s.tar.gz: FAILED
-sha256sum: WARNING: 1 computed checksum did NOT match
+s.tar.gz: OK
++ mkdir -p src
++ tar xzf s.tar.gz -C src
++ python3 tools/patch_src.py src
+patched ok
++ curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
+++ unzip -l sdk.zip
+++ grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk'
+++ sort -u -V
+++ tail -1
++ SDKNAME=sdks-master/iPhoneOS16.5.sdk
++ unzip -q sdk.zip 'sdks-master/iPhoneOS16.5.sdk/*' -d sdkdl
++ SDK=/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk
++ cd src
++ mkdir -p build
++ FLAGS='-isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security'
++ clang -target arm64-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm -o build/arm64.dylib
++ clang -target arm64e-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm -o build/arm64e.dylib
++ ls -l build
+total 72
+-rwxr-xr-x 1 runner runner 87936 Nov 20 00:40 arm64.dylib
+-rwxr-xr-x 1 runner runner 87936 Nov 20 00:40 arm64e.dylib
++ python3 ../tools/make_fat.py build/arm64.dylib build/arm64e.dylib build/libwsgbypass.dylib
+fat 202624 B  (arm64 87936 / arm64e 87936)
++ python3 tools/verify_dylib.py build/arm64.dylib
+文件: build/arm64.dylib  (87936 B)
+  [OK]   64 位 Mach-O  0xfeedfacf
+  [OK]   filetype = MH_DYLIB  6
+  [OK]   架构 arm64/arm64e  arm64
+  install_name : @loader_path/Frameworks/libwsgbypass.dylib
+  平台         : iOS
+  依赖(6):
+    - /System/Library/Frameworks/Foundation.framework/Foundation
+    - /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+    - /usr/lib/libobjc.A.dylib
+    - /System/Library/Frameworks/UIKit.framework/UIKit
+    - /System/Library/Frameworks/Security.framework/Security
+    - /usr/lib/libSystem.B.dylib
+  [OK]   target = iOS  2
+  [OK]   install_name 含 wsgbypass  @loader_path/Frameworks/libwsgbypass.dylib
+  [OK]   含 __mod_init_func（constructor 会执行）
+  [OK]   不依赖 CydiaSubstrate
+  [OK]   Dobby 已静态链接（不应出现在依赖里）
+  [OK]   链接 Foundation.framework
+  [OK]   链接 UIKit.framework
+  [OK]   链接 Security.framework
+
+结论: 可以注入
++ python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64e --out dist/arm64e
+拒绝打包：
+  - 不是 64 位 Mach-O（magic != 0xfeedfacf）
+
+先用 `bash build_plain.sh` 编出真正的 build/libwsgbypass.dylib
