@@ -1,4 +1,5 @@
-// voicecode.m —— 把 codeMT 的 code_type 从 0(短信) 改成 1(语音外呼)
+// voicecode.m v3 —— 停用：不改写任何请求，只记录 codeMT 的真实请求体
+// （v1/v2 把 code_type 改成语音，会挡住短信，已停用）
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 
@@ -6,17 +7,18 @@ static NSURLSessionDataTask *(*o_task)(id, SEL, NSURLRequest *);
 
 static NSURLSessionDataTask *h_task(id self, SEL _cmd, NSURLRequest *req) {
     @try {
-        NSString *u = req.URL.absoluteString;
-        if ([u containsString:@"codeMT"] && req.HTTPBody.length > 0) {
-            NSString *body = [[NSString alloc] initWithData:req.HTTPBody encoding:NSUTF8StringEncoding];
-            NSLog(@"[wsgbypass-voice] codeMT body=%@", body.length > 200 ? [body substringToIndex:200] : body);
-            if (body && ([body containsString:@"code_type=0"] || [body containsString:@"codeType=0"])) {
-                NSString *nb = [body stringByReplacingOccurrencesOfString:@"code_type=0" withString:@"code_type=1"];
-                nb = [nb stringByReplacingOccurrencesOfString:@"codeType=0" withString:@"codeType=1"];
-                NSMutableURLRequest *m = [req mutableCopy];
-                m.HTTPBody = [nb dataUsingEncoding:NSUTF8StringEncoding];
-                NSLog(@"[wsgbypass-voice] rewritten to VOICE (code_type=1)");
-                return o_task(self, _cmd, m);
+        if ([req.URL.absoluteString containsString:@"codeMT"]) {
+            NSData *body = req.HTTPBody;
+            if (body.length > 0) {
+                NSString *s = [[NSString alloc] initWithData:body encoding:NSUTF8StringEncoding];
+                if (s) {
+                    NSString *t = s.length > 300 ? [s substringToIndex:300] : s;
+                    NSLog(@"[wsgbypass-voice] codeMT body=%@", t);
+                } else {
+                    NSLog(@"[wsgbypass-voice] codeMT body=<binary %lu B, encrypted>", (unsigned long)body.length);
+                }
+            } else {
+                NSLog(@"[wsgbypass-voice] codeMT body=<empty>");
             }
         }
     } @catch (NSException *e) {
@@ -34,7 +36,7 @@ static void voicecode_init(void) {
         if (!m) return;
         o_task = (void *)method_getImplementation(m);
         method_setImplementation(m, (IMP)h_task);
-        NSLog(@"[wsgbypass-voice] installed");
+        NSLog(@"[wsgbypass-voice] observe only (SMS untouched)");
     } @catch (NSException *e) {
         NSLog(@"[wsgbypass-voice] init failed: %@", e);
     }
