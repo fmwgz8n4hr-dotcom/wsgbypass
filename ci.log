@@ -1,7 +1,7 @@
 + sudo apt-get update -qq
 + sudo apt-get install -y -qq clang lld curl unzip make python3
 Selecting previously unselected package clang.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216752 files and directories currently installed.)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 216720 files and directories currently installed.)
 Preparing to unpack .../clang_1%3a18.0-59~exp2_amd64.deb ...
 Unpacking clang (1:18.0-59~exp2) ...
 Selecting previously unselected package lld:amd64.
@@ -21,11 +21,6 @@ No containers need to be restarted.
 No user sessions are running outdated binaries.
 
 No VM guests are running outdated hypervisor (qemu) binaries on this host.
-+ clang --version
-Ubuntu clang version 18.1.3 (1ubuntu1)
-Target: x86_64-pc-linux-gnu
-Thread model: posix
-InstalledDir: /usr/bin
 + command -v ld64.lld
 ++ head -1
 ++ ls /usr/lib/llvm-16/bin/ld64.lld /usr/lib/llvm-17/bin/ld64.lld /usr/lib/llvm-18/bin/ld64.lld
@@ -47,46 +42,48 @@ sweep narrowed
 + cp tools/smslog.m src/tweak/smslog.m
 + cp tools/devreset.m src/tweak/devreset.m
 + cp tools/lcfix.m src/tweak/lcfix.m
++ cp tools/dchook.m src/tweak/dchook.m
 + curl -sL -o sdk.zip https://github.com/theos/sdks/archive/refs/heads/master.zip
 ++ unzip -l sdk.zip
 ++ grep -oE 'sdks-master/iPhoneOS[0-9.]+\.sdk'
-++ sort -u -V
 ++ tail -1
+++ sort -u -V
 + SDKNAME=sdks-master/iPhoneOS16.5.sdk
 + unzip -q sdk.zip 'sdks-master/iPhoneOS16.5.sdk/*' -d sdkdl
 + SDK=/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk
 + cd src
 + mkdir -p build dist/arm64
-+ FLAGS='-isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security'
-+ SRCS='tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m'
-+ clang -target arm64-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m -o build/arm64.dylib
-+ clang -target arm64e-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m -o build/arm64e.dylib
++ FLAGS='-isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security -framework DeviceCheck'
++ SRCS='tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m tweak/dchook.m'
++ clang -target arm64-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security -framework DeviceCheck tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m tweak/dchook.m -o build/arm64.dylib
++ clang -target arm64e-apple-ios13.4.0 -isysroot /home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk -F/home/runner/work/wsgbypass/wsgbypass/sdkdl/sdks-master/iPhoneOS16.5.sdk/System/Library/Frameworks -fuse-ld=lld -fobjc-arc -O2 -Wall -Wno-unused-function -Wno-deprecated-declarations -I tweak -include tweak/compat_private.h -x objective-c -dynamiclib -install_name @loader_path/Frameworks/libwsgbypass.dylib -framework Foundation -framework UIKit -framework Security -framework DeviceCheck tweak/Tweak.xm tweak/smslog.m tweak/devreset.m tweak/lcfix.m tweak/dchook.m -o build/arm64e.dylib
 + python3 ../tools/make_fat.py build/arm64.dylib build/arm64e.dylib build/libwsgbypass.dylib
-fat 208552 B  (arm64 93864 / arm64e 93864)
+fat 208688 B  (arm64 94000 / arm64e 94000)
 + cp build/arm64.dylib dist/arm64/libwsgbypass-arm64.dylib
 + ls -l build dist/arm64
 build:
 total 300
--rwxr-xr-x 1 runner runner  93864 Nov 20 05:48 arm64.dylib
--rwxr-xr-x 1 runner runner  93864 Nov 20 05:48 arm64e.dylib
--rw-r--r-- 1 runner runner 208552 Nov 20 05:48 libwsgbypass.dylib
+-rwxr-xr-x 1 runner runner  94000 Nov 22 18:57 arm64.dylib
+-rwxr-xr-x 1 runner runner  94000 Nov 22 18:57 arm64e.dylib
+-rw-r--r-- 1 runner runner 208688 Nov 22 18:57 libwsgbypass.dylib
 
 dist/arm64:
 total 48
--rwxr-xr-x 1 runner runner 93864 Nov 20 05:48 libwsgbypass-arm64.dylib
+-rwxr-xr-x 1 runner runner 94000 Nov 22 18:57 libwsgbypass-arm64.dylib
 + python3 tools/verify_dylib.py build/arm64.dylib
-文件: build/arm64.dylib  (93864 B)
+文件: build/arm64.dylib  (94000 B)
   [OK]   64 位 Mach-O  0xfeedfacf
   [OK]   filetype = MH_DYLIB  6
   [OK]   架构 arm64/arm64e  arm64
   install_name : @loader_path/Frameworks/libwsgbypass.dylib
   平台         : iOS
-  依赖(6):
+  依赖(7):
     - /System/Library/Frameworks/Foundation.framework/Foundation
     - /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
     - /usr/lib/libobjc.A.dylib
     - /System/Library/Frameworks/UIKit.framework/UIKit
     - /System/Library/Frameworks/Security.framework/Security
+    - /System/Library/Frameworks/DeviceCheck.framework/DeviceCheck
     - /usr/lib/libSystem.B.dylib
   [OK]   target = iOS  2
   [OK]   install_name 含 wsgbypass  @loader_path/Frameworks/libwsgbypass.dylib
@@ -99,23 +96,23 @@ total 48
 
 结论: 可以注入
 + python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64e --out dist/arm64e
-[+] dylib   : build/libwsgbypass.dylib (208552 B)
+[+] dylib   : build/libwsgbypass.dylib (208688 B)
 [+] 布局    : rootless (/var/jb)
 [+] 过滤    : com.xiaojukeji.didi
-[+] 输出    : dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb (33280 B)
+[+] 输出    : dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb (33986 B)
 + mv dist/arm64e/com.yg.wsgbypass_1.0.0_iphoneos-arm64e.deb dist/arm64e/wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
 + python3 tools/build_deb.py --dylib build/libwsgbypass.dylib --rootless --arch iphoneos-arm64 --out dist/arm64
-[+] dylib   : build/libwsgbypass.dylib (208552 B)
+[+] dylib   : build/libwsgbypass.dylib (208688 B)
 [+] 布局    : rootless (/var/jb)
 [+] 过滤    : com.xiaojukeji.didi
-[+] 输出    : dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (33282 B)
+[+] 输出    : dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb (33986 B)
 + mv dist/arm64/com.yg.wsgbypass_1.0.0_iphoneos-arm64.deb dist/arm64/wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 + ls -l dist/arm64e dist/arm64
 dist/arm64:
 total 84
--rwxr-xr-x 1 runner runner 93864 Nov 20 05:48 libwsgbypass-arm64.dylib
--rw-r--r-- 1 runner runner 33282 Nov 20 05:48 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
+-rwxr-xr-x 1 runner runner 94000 Nov 22 18:57 libwsgbypass-arm64.dylib
+-rw-r--r-- 1 runner runner 33986 Nov 22 18:57 wsgbypass-rootless_1.0.0_iphoneos-arm64.deb
 
 dist/arm64e:
 total 36
--rw-r--r-- 1 runner runner 33280 Nov 20 05:48 wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
+-rw-r--r-- 1 runner runner 33986 Nov 22 18:57 wsgbypass-roothide_1.0.0_iphoneos-arm64e.deb
